@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <button onclick="createCategory()">Create Electronics Category</button>
+    <script>
+        function createCategory() {
+            fetch('http://localhost:8080/api/categories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: "Electronics",
+                    description: "Electronic devices and gadgets"
+                })
+            })
+            .then(response => response.json())
+            .then(data => console.log('Category created:', data))
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>

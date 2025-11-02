@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Store Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial; }
+        body { background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; }
+        h1 { color: #333; margin-bottom: 30px; }
+        .sections { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+        section { background: white; padding: 20px; border-radius: 10px; flex: 1; min-width: 300px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; margin-bottom: 15px; }
+        h3 { color: #34495e; margin: 15px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #219a52; }
+        .item-card { background: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 5px; border-left: 4px solid #3498db; }
+        .actions { margin-top: 10px; }
+        .edit-btn { background: #3498db; padding: 5px 10px; margin-right: 5px; }
+        .delete-btn { background: #e74c3c; padding: 5px 10px; }
+        .product-img { max-width: 80px; border-radius: 3px; margin-bottom: 5px; }
+        .low-stock { color: #e74c3c; }
+        .search-box { margin-bottom: 15px; }
+        .order-card { background: #fff3cd; border-left: 4px solid #ffc107; }
+        #edit-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>Store Admin</h1></header>
+
+        <div class="sections">
+            <section>
+                <h2>Categories</h2>
+                <form id="add-category-form">
+                    <div class="form-group"><input type="text" id="category-name" placeholder="Category Name" required></div>
+                    <div class="form-group"><textarea id="category-desc" placeholder="Description"></textarea></div>
+                    <button>Add Category</button>
+                </form>
+                <h3>Existing Categories</h3>
+                <div id="categories-container"></div>
+            </section>
+
+            <section>
+                <h2>Products</h2>
+                <form id="add-product-form">
+                    <div class="form-group"><select id="product-cat" required><option value="">Select Category</option></select></div>
+                    <div class="form-group"><input type="text" id="product-name" placeholder="Product Name" required></div>
+                    <div class="form-group"><textarea id="product-desc" placeholder="Description"></textarea></div>
+                    <div class="form-group"><input type="text" id="product-img" placeholder="Image URL"></div>
+                    <div class="form-group"><input type="number" id="product-price" placeholder="Price" step="0.01" required></div>
+                    <div class="form-group"><input type="number" id="product-stock" placeholder="Stock" required></div>
+                    <button>Add Product</button>
+                </form>
+
+                <div class="search-box"><input type="text" id="search" placeholder="Search products..." onkeyup="searchProducts()"></div>
+                <select id="filter-cat" onchange="filterProducts()"><option value="">All Categories</option></select>
+                <select id="filter-stock" onchange="filterProducts()"><option value="">All Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option></select>
+
+                <h3>Products</h3>
+                <div id="products-container"></div>
+            </section>
+        </div>
+
+        <section>
+            <h2>Orders</h2>
+            <form id="add-order-form">
+                <div class="form-group"><input type="text" id="order-customer" placeholder="Customer Name" required></div>
+                <div class="form-group"><select id="order-product" required><option value="">Select Product</option></select></div>
+                <div class="form-group"><input type="number" id="order-qty" placeholder="Quantity" value="1" required></div>
+                <div class="form-group"><select id="order-status"><option value="pending">Pending</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option></select></div>
+                <button>Add Order</button>
+            </form>
+            <h3>Orders</h3>
+            <div id="orders-container"></div>
+        </section>
+    </div>
+
+    <div id="edit-modal">
+        <div class="modal-content">
+            <h3>Edit Product</h3>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <div class="form-group"><select id="edit-cat" required><option value="">Select Category</option></select></div>
+                <div class="form-group"><input type="text" id="edit-name" required></div>
+                <div class="form-group"><textarea id="edit-desc"></textarea></div>
+                <div class="form-group"><input type="text" id="edit-img"></div>
+                <div class="form-group"><input type="number" id="edit-price" step="0.01" required></div>
+                <div class="form-group"><input type="number" id="edit-stock" required></div>
+                <button>Save</button>
+                <button type="button" onclick="closeModal()" style="background:#95a5a6">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let categories = JSON.parse(localStorage.getItem('categories')) || [];
+        let products = JSON.parse(localStorage.getItem('products')) || [];
+        let orders = JSON.parse(localStorage.getItem('orders')) || [];
+
+        function saveData() {
+            localStorage.setItem('categories', JSON.stringify(categories));
+            localStorage.setItem('products', JSON.stringify(products));
+            localStorage.setItem('orders', JSON.stringify(orders));
+        }
+
+        function updateDropdowns() {
+            const selects = ['product-cat', 'filter-cat', 'edit-cat', 'order-product'];
+            selects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    const current = select.value;
+                    select.innerHTML = selectId === 'order-product' ? '<option value="">Select Product</option>' : '<option value="">Select Category</option>';
+                    const data = selectId === 'order-product' ? products : categories;
+                    data.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.id;
+                        option.textContent = item.name;
+                        select.appendChild(option);
+                    });
+                    if (current) select.value = current;
+                }
+            });
+        }
+
+        document.getElementById('add-category-form').onsubmit = function(e) {
+            e.preventDefault();
+            categories.push({id: Date.now(), name: document.getElementById('category-name').value, description: document.getElementById('category-desc').value});
+            updateDropdowns(); displayCategories(); saveData(); alert('Category added!'); this.reset();
+        }
+
+        document.getElementById('add-product-form').onsubmit = function(e) {
+            e.preventDefault();
+            products.push({id: Date.now(), name: document.getElementById('product-name').value, description: document.getElementById('product-desc').value, image: document.getElementById('product-img').value, price: document.getElementById('product-price').value, stock: parseInt(document.getElementById('product-stock').value), categoryId: parseInt(document.getElementById('product-cat').value)});
+            displayProducts(); updateDropdowns(); saveData(); alert('Product added!'); this.reset();
+        }
+
+        document.getElementById('add-order-form').onsubmit = function(e) {
+            e.preventDefault();
+            const product = products.find(p => p.id === parseInt(document.getElementById('order-product').value));
+            if (product) {
+                orders.push({id: Date.now(), customerName: document.getElementById('order-customer').value, productId: product.id, productName: product.name, quantity: parseInt(document.getElementById('order-qty').value), total: (product.price * document.getElementById('order-qty').value).toFixed(2), status: document.getElementById('order-status').value, date: new Date().toLocaleDateString()});
+                displayOrders(); saveData(); alert('Order added!'); this.reset();
+            }
+        }
+
+        document.getElementById('edit-form').onsubmit = function(e) {
+            e.preventDefault();
+            const product = products.find(p => p.id === parseInt(document.getElementById('edit-id').value));
+            if (product) {
+                product.name = document.getElementById('edit-name').value;
+                product.description = document.getElementById('edit-desc').value;
+                product.image = document.getElementById('edit-img').value;
+                product.price = document.getElementById('edit-price').value;
+                product.stock = parseInt(document.getElementById('edit-stock').value);
+                product.categoryId = parseInt(document.getElementById('edit-cat').value);
+                displayProducts(); updateDropdowns(); saveData(); closeModal(); alert('Product updated!');
+            }
+        }
+
+        function displayCategories() {
+            const container = document.getElementById('categories-container');
+            container.innerHTML = categories.length ? categories.map(cat => `
+                <div class="item-card">
+                    <h4>${cat.name}</h4><p>${cat.description}</p>
+                    <div class="actions">
+                        <button class="edit-btn" onclick="editCategory(${cat.id})">Edit</button>
+                        <button class="delete-btn" onclick="deleteCategory(${cat.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('') : '<p>No categories</p>';
+        }
+
+        function displayProducts() {
+            const container = document.getElementById('products-container');
+            container.innerHTML = products.length ? products.map(product => {
+                const category = categories.find(c => c.id === product.categoryId);
+                const stockClass = product.stock === 0 ? 'out-of-stock' : product.stock < 10 ? 'low-stock' : '';
+                return `
+                    <div class="item-card ${stockClass}">
+                        ${product.image ? `<img src="${product.image}" class="product-img" onerror="this.style.display='none'">` : ''}
+                        <h4>${product.name}</h4><p>${product.description}</p>
+                        <p>Category: ${category ? category.name : 'None'}</p>
+                        <p>Price: $${product.price}</p>
+                        <p class="${stockClass}">Stock: ${product.stock}</p>
+                        <div class="actions">
+                            <button class="edit-btn" onclick="openModal(${product.id})">Edit</button>
+                            <button class="delete-btn" onclick="deleteProduct(${product.id})">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('') : '<p>No products</p>';
+        }
+
+        function displayOrders() {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = orders.length ? orders.map(order => `
+                <div class="item-card order-card">
+                    <h4>Order #${order.id}</h4>
+                    <p>Customer: ${order.customerName}</p>
+                    <p>Product: ${order.productName}</p>
+                    <p>Qty: ${order.quantity} | Total: $${order.total}</p>
+                    <p>Date: ${order.date} | Status: ${order.status}</p>
+                    <div class="actions">
+                        <button class="edit-btn" onclick="editOrder(${order.id})">Status</button>
+                        <button class="delete-btn" onclick="deleteOrder(${order.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('') : '<p>No orders</p>';
+        }
+
+        function searchProducts() {
+            const term = document.getElementById('search').value.toLowerCase();
+            document.querySelectorAll('#products-container .item-card').forEach(card => {
+                card.style.display = card.querySelector('h4').textContent.toLowerCase().includes(term) ? 'block' : 'none';
+            });
+        }
+
+        function filterProducts() {
+            const catFilter = document.getElementById('filter-cat').value;
+            const stockFilter = document.getElementById('filter-stock').value;
+            document.querySelectorAll('#products-container .item-card').forEach(card => {
+                let show = true;
+                if (catFilter) {
+                    const catName = card.querySelector('p:nth-child(3)').textContent.replace('Category: ', '');
+                    const catId = categories.find(c => c.name === catName)?.id;
+                    if (catId != catFilter) show = false;
+                }
+                if (stockFilter && show) {
+                    const stock = parseInt(card.querySelector('p:nth-child(5)').textContent.replace('Stock: ', ''));
+                    if (stockFilter === 'low' && stock >= 10) show = false;
+                    if (stockFilter === 'out' && stock > 0) show = false;
+                }
+                card.style.display = show ? 'block' : 'none';
+            });
+        }
+
+        function openModal(productId) {
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                document.getElementById('edit-id').value = product.id;
+                document.getElementById('edit-name').value = product.name;
+                document.getElementById('edit-desc').value = product.description;
+                document.getElementById('edit-img').value = product.image;
+                document.getElementById('edit-price').value = product.price;
+                document.getElementById('edit-stock').value = product.stock;
+                document.getElementById('edit-cat').value = product.categoryId;
+                updateDropdowns();
+                document.getElementById('edit-modal').style.display = 'block';
+            }
+        }
+
+        function closeModal() { document.getElementById('edit-modal').style.display = 'none'; }
+
+        function deleteProduct(id) { if(confirm('Delete?')) { products = products.filter(p => p.id !== id); displayProducts(); updateDropdowns(); saveData(); } }
+        function deleteCategory(id) { if(confirm('Delete?')) { categories = categories.filter(c => c.id !== id); updateDropdowns(); displayCategories(); saveData(); } }
+        function deleteOrder(id) { if(confirm('Delete?')) { orders = orders.filter(o => o.id !== id); displayOrders(); saveData(); } }
+
+        function editCategory(id) { const cat = categories.find(c => c.id === id); if(cat) { const newName = prompt('New name:', cat.name); if(newName) { cat.name = newName; updateDropdowns(); displayCategories(); saveData(); } } }
+        function editOrder(id) { const order = orders.find(o => o.id === id); if(order) { const newStatus = prompt('New status (pending/shipped/delivered):', order.status); if(newStatus) { order.status = newStatus; displayOrders(); saveData(); } } }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDropdowns(); displayCategories(); displayProducts(); displayOrders();
+        });
+    </script>
+</body>
+</html>
