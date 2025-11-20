@@ -21,12 +21,13 @@
         .actions { margin-top: 10px; }
         .edit-btn { background: #3498db; padding: 5px 10px; margin-right: 5px; }
         .delete-btn { background: #e74c3c; padding: 5px 10px; }
-        .product-img { max-width: 80px; border-radius: 3px; margin-bottom: 5px; }
+        .product-img { max-width: 100px; max-height: 100px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #ddd; }
         .low-stock { color: #e74c3c; }
         .search-box { margin-bottom: 15px; }
         .order-card { background: #fff3cd; border-left: 4px solid #ffc107; }
         #edit-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
         .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
+        .image-preview { max-width: 100px; max-height: 100px; margin-top: 5px; display: none; }
     </style>
 </head>
 <body>
@@ -51,7 +52,11 @@
                     <div class="form-group"><select id="product-cat" required><option value="">Select Category</option></select></div>
                     <div class="form-group"><input type="text" id="product-name" placeholder="Product Name" required></div>
                     <div class="form-group"><textarea id="product-desc" placeholder="Description"></textarea></div>
-                    <div class="form-group"><input type="text" id="product-img" placeholder="Image URL"></div>
+                    <div class="form-group">
+                        <label>Product Image</label>
+                        <input type="text" id="product-img" placeholder="Enter: ip.jpg" oninput="showImagePreview(this.value)">
+                        <img id="image-preview" class="image-preview" alt="Image preview">
+                    </div>
                     <div class="form-group"><input type="number" id="product-price" placeholder="Price" step="0.01" required></div>
                     <div class="form-group"><input type="number" id="product-stock" placeholder="Stock" required></div>
                     <button>Add Product</button>
@@ -88,7 +93,11 @@
                 <div class="form-group"><select id="edit-cat" required><option value="">Select Category</option></select></div>
                 <div class="form-group"><input type="text" id="edit-name" required></div>
                 <div class="form-group"><textarea id="edit-desc"></textarea></div>
-                <div class="form-group"><input type="text" id="edit-img"></div>
+                <div class="form-group">
+                    <label>Product Image</label>
+                    <input type="text" id="edit-img" oninput="showEditImagePreview(this.value)">
+                    <img id="edit-image-preview" class="image-preview" alt="Image preview">
+                </div>
                 <div class="form-group"><input type="number" id="edit-price" step="0.01" required></div>
                 <div class="form-group"><input type="number" id="edit-stock" required></div>
                 <button>Save</button>
@@ -106,6 +115,32 @@
             localStorage.setItem('categories', JSON.stringify(categories));
             localStorage.setItem('products', JSON.stringify(products));
             localStorage.setItem('orders', JSON.stringify(orders));
+        }
+
+        function showImagePreview(imageUrl) {
+            const preview = document.getElementById('image-preview');
+            if (imageUrl) {
+                preview.src = imageUrl;
+                preview.style.display = 'block';
+                preview.onerror = function() {
+                    preview.style.display = 'none';
+                }
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        function showEditImagePreview(imageUrl) {
+            const preview = document.getElementById('edit-image-preview');
+            if (imageUrl) {
+                preview.src = imageUrl;
+                preview.style.display = 'block';
+                preview.onerror = function() {
+                    preview.style.display = 'none';
+                }
+            } else {
+                preview.style.display = 'none';
+            }
         }
 
         function updateDropdowns() {
@@ -137,6 +172,7 @@
             e.preventDefault();
             products.push({id: Date.now(), name: document.getElementById('product-name').value, description: document.getElementById('product-desc').value, image: document.getElementById('product-img').value, price: document.getElementById('product-price').value, stock: parseInt(document.getElementById('product-stock').value), categoryId: parseInt(document.getElementById('product-cat').value)});
             displayProducts(); updateDropdowns(); saveData(); alert('Product added!'); this.reset();
+            document.getElementById('image-preview').style.display = 'none';
         }
 
         document.getElementById('add-order-form').onsubmit = function(e) {
@@ -250,11 +286,15 @@
                 document.getElementById('edit-stock').value = product.stock;
                 document.getElementById('edit-cat').value = product.categoryId;
                 updateDropdowns();
+                showEditImagePreview(product.image);
                 document.getElementById('edit-modal').style.display = 'block';
             }
         }
 
-        function closeModal() { document.getElementById('edit-modal').style.display = 'none'; }
+        function closeModal() { 
+            document.getElementById('edit-modal').style.display = 'none';
+            document.getElementById('edit-image-preview').style.display = 'none';
+        }
 
         function deleteProduct(id) { if(confirm('Delete?')) { products = products.filter(p => p.id !== id); displayProducts(); updateDropdowns(); saveData(); } }
         function deleteCategory(id) { if(confirm('Delete?')) { categories = categories.filter(c => c.id !== id); updateDropdowns(); displayCategories(); saveData(); } }
